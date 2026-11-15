@@ -80,11 +80,11 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  SUBMISSIONS: "dsa_challenge_submissions_v1",
-  ALLOWED_EMAILS: "dsa_challenge_allowed_emails_v1",
-  PROBLEMS: "dsa_challenge_problems_v1",
-  CURRENT_USER: "dsa_challenge_current_user_v1",
-  SIMULATED_DATE: "dsa_challenge_simulated_date_v1",
+  SUBMISSIONS: "dsa_challenge_submissions_v2",
+  ALLOWED_EMAILS: "dsa_challenge_allowed_emails_v2",
+  PROBLEMS: "dsa_challenge_problems_v2",
+  CURRENT_USER: "dsa_challenge_current_user_v2",
+  SIMULATED_DATE: "dsa_challenge_simulated_date_v2",
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
@@ -125,12 +125,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (storedUser) {
         setCurrentUserState(JSON.parse(storedUser));
       } else {
-        // Default login as Keerthana for seamless first-time preview
+        // Default login as Organizer Admin (keerthusan0207@gmail.com)
         const defaultUser: Participant = {
-          id: "p-keerthana",
-          email: "keerthana@challenge.com",
-          name: "Keerthana S",
-          role: "participant",
+          id: "p-allow-admin",
+          email: "keerthusan0207@gmail.com",
+          name: "Keerthana S (Admin)",
+          role: "admin",
           created_at: new Date().toISOString(),
         };
         setCurrentUserState(defaultUser);

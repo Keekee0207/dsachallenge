@@ -6,14 +6,14 @@ INSERT INTO public.challenge_settings (challenge_name, start_date, end_date, tim
 VALUES ('50 Days DSA Challenge', '2026-11-21', '2027-01-09', 'Asia/Kolkata', 50)
 ON CONFLICT DO NOTHING;
 
--- 2. Insert Initial Allowed Emails (1 Admin + 4 Participant Slots)
+-- 2. Insert Initial Allowed Emails (1 Admin: keerthusan0207@gmail.com + 4 Participant Slots)
 INSERT INTO public.allowed_emails (email, name, role, is_active)
 VALUES 
-  ('admin@challenge.com', 'Challenge Organizer', 'admin', true),
-  ('keerthana@challenge.com', 'Keerthana S', 'participant', true),
-  ('participant2@challenge.com', 'Aarav Sharma', 'participant', true),
-  ('participant3@challenge.com', 'Rohan Iyer', 'participant', true),
-  ('participant4@challenge.com', 'Ananya Patel', 'participant', true)
+  ('keerthusan0207@gmail.com', 'Keerthana S (Admin)', 'admin', true),
+  ('participant1@example.com', 'Participant 1', 'participant', true),
+  ('participant2@example.com', 'Participant 2', 'participant', true),
+  ('participant3@example.com', 'Participant 3', 'participant', true),
+  ('participant4@example.com', 'Participant 4', 'participant', true)
 ON CONFLICT (email) DO NOTHING;
 
 -- 3. Insert All 50 DSA Roadmap Problems

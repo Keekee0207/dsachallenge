@@ -44,6 +44,10 @@ export const AdminDashboard: React.FC = () => {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<Role>("participant");
   const [allowlistMsg, setAllowlistMsg] = useState<string | null>(null);
+  const [editingAllowlistId, setEditingAllowlistId] = useState<string | null>(null);
+  const [editAllowlistName, setEditAllowlistName] = useState("");
+  const [editAllowlistEmail, setEditAllowlistEmail] = useState("");
+  const [editAllowlistRole, setEditAllowlistRole] = useState<Role>("participant");
 
   // Problem Edit State
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
@@ -488,44 +492,112 @@ export const AdminDashboard: React.FC = () => {
 
             <div className="divide-y divide-neutral-100">
               {allowedEmails.map((item) => (
-                <div key={item.id} className="py-3 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center text-xs font-bold">
-                      {item.name.charAt(0)}
+                <div key={item.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  {editingAllowlistId === item.id ? (
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        value={editAllowlistName}
+                        onChange={(e) => setEditAllowlistName(e.target.value)}
+                        className="px-3 py-1.5 rounded-lg border border-neutral-300 text-xs"
+                        placeholder="Name"
+                      />
+                      <input
+                        type="email"
+                        value={editAllowlistEmail}
+                        onChange={(e) => setEditAllowlistEmail(e.target.value)}
+                        className="px-3 py-1.5 rounded-lg border border-neutral-300 text-xs font-mono"
+                        placeholder="email@example.com"
+                      />
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={editAllowlistRole}
+                          onChange={(e) => setEditAllowlistRole(e.target.value as Role)}
+                          className="px-2 py-1.5 rounded-lg border border-neutral-300 text-xs bg-white"
+                        >
+                          <option value="participant">Participant</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                        <button
+                          onClick={async () => {
+                            if (editAllowlistName.trim() && editAllowlistEmail.trim()) {
+                              await updateAllowedEmail(item.id, {
+                                name: editAllowlistName.trim(),
+                                email: editAllowlistEmail.trim().toLowerCase(),
+                                role: editAllowlistRole,
+                              });
+                              setEditingAllowlistId(null);
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-neutral-950 text-white rounded-lg text-xs font-semibold hover:bg-neutral-800"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingAllowlistId(null)}
+                          className="px-2.5 py-1.5 border border-neutral-200 text-neutral-600 rounded-lg text-xs hover:bg-neutral-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-neutral-900">{item.name}</span>
-                        <span className="text-[10px] px-2 py-0.2 rounded-full bg-neutral-100 text-neutral-700 uppercase font-medium">
-                          {item.role}
-                        </span>
-                        {!item.is_active && (
-                          <span className="text-[10px] text-rose-600 bg-rose-50 px-2 py-0.2 rounded-full">
-                            Inactive
-                          </span>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center text-xs font-bold">
+                          {item.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-neutral-900">{item.name}</span>
+                            <span className="text-[10px] px-2 py-0.2 rounded-full bg-neutral-100 text-neutral-700 uppercase font-medium">
+                              {item.role}
+                            </span>
+                            {!item.is_active && (
+                              <span className="text-[10px] text-rose-600 bg-rose-50 px-2 py-0.2 rounded-full">
+                                Inactive
+                              </span>
+                            )}
+                            {item.email === "keerthusan0207@gmail.com" && (
+                              <span className="text-[10px] px-2 py-0.2 rounded-full bg-amber-100 text-amber-900 font-semibold">
+                                Primary Admin
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-neutral-500 font-mono text-[11px]">{item.email}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <button
+                          onClick={() => {
+                            setEditingAllowlistId(item.id);
+                            setEditAllowlistName(item.name);
+                            setEditAllowlistEmail(item.email);
+                            setEditAllowlistRole(item.role);
+                          }}
+                          className="text-[11px] text-neutral-700 hover:text-neutral-950 px-2.5 py-1 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => updateAllowedEmail(item.id, { is_active: !item.is_active })}
+                          className="text-[11px] text-neutral-600 hover:text-neutral-900 px-2.5 py-1 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition-colors"
+                        >
+                          {item.is_active ? "Deactivate" : "Activate"}
+                        </button>
+                        {item.email !== currentUser?.email && (
+                          <button
+                            onClick={() => deleteAllowedEmail(item.id)}
+                            className="p-1.5 text-neutral-400 hover:text-rose-600 transition-colors"
+                            title="Remove from allowlist"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
-                      <span className="text-neutral-500 font-mono text-[11px]">{item.email}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateAllowedEmail(item.id, { is_active: !item.is_active })}
-                      className="text-[11px] text-neutral-600 hover:text-neutral-900 px-2.5 py-1 rounded-lg border border-neutral-200"
-                    >
-                      {item.is_active ? "Deactivate" : "Activate"}
-                    </button>
-                    {item.email !== currentUser?.email && (
-                      <button
-                        onClick={() => deleteAllowedEmail(item.id)}
-                        className="p-1.5 text-neutral-400 hover:text-rose-600 transition-colors"
-                        title="Remove from allowlist"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
