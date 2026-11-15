@@ -205,3 +205,8 @@ CREATE POLICY "Admin audit log access"
     TO authenticated
     USING (public.is_admin())
     WITH CHECK (public.is_admin());
+
+-- 7. ENABLE REALTIME BROADCASTING
+-- Allows Supabase to broadcast live changes to connected clients in real time
+ALTER PUBLICATION supabase_realtime ADD TABLE public.submissions;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.allowed_emails;
