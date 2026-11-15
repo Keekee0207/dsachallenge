@@ -30,6 +30,7 @@ interface AppContextType {
   deniedEmail: string | null;
   setCurrentUser: (user: Participant | null) => void;
   loginAs: (email: string) => boolean;
+  signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   
   // Date & Challenge Info
@@ -80,11 +81,11 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  SUBMISSIONS: "dsa_challenge_submissions_v2",
-  ALLOWED_EMAILS: "dsa_challenge_allowed_emails_v2",
-  PROBLEMS: "dsa_challenge_problems_v2",
-  CURRENT_USER: "dsa_challenge_current_user_v2",
-  SIMULATED_DATE: "dsa_challenge_simulated_date_v2",
+  SUBMISSIONS: "dsa_challenge_submissions_v3",
+  ALLOWED_EMAILS: "dsa_challenge_allowed_emails_v3",
+  PROBLEMS: "dsa_challenge_problems_v3",
+  CURRENT_USER: "dsa_challenge_current_user_v3",
+  SIMULATED_DATE: "dsa_challenge_simulated_date_v3",
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
@@ -186,7 +187,40 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
-  const logout = () => {
+  const signInWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+    if (isSupabaseConnected) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
+          },
+        });
+        if (error) {
+          return { success: false, error: error.message };
+        }
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    } else {
+      return {
+        success: false,
+        error: "Supabase Google OAuth credentials not found in .env.local. You can test sign-in instantly using the authorized Google accounts listed below!",
+      };
+    }
+  };
+
+  const logout = async () => {
+    if (isSupabaseConnected) {
+      try {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.error("Supabase signOut error", e);
+      }
+    }
     setCurrentUser(null);
     setIsAccessDenied(false);
     setDeniedEmail(null);
@@ -456,6 +490,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         deniedEmail,
         setCurrentUser,
         loginAs,
+        signInWithGoogle,
         logout,
         simulatedDate,
         setSimulatedDate,

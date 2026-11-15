@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AuthModal } from "@/components/modals/AuthModal";
@@ -8,10 +9,18 @@ import { DateSimulatorModal } from "@/components/modals/DateSimulatorModal";
 import { AccessDenied } from "@/components/auth/AccessDenied";
 import { useApp } from "@/context/AppContext";
 
-export const AppShell = ({ children }: { children: React.ReactNode }) => {
-  const { isAccessDenied } = useApp();
+function AppShellInner({ children }: { children: React.ReactNode }) {
+  const { isAccessDenied, loginAs } = useApp();
+  const searchParams = useSearchParams();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [dateSimModalOpen, setDateSimModalOpen] = useState(false);
+
+  useEffect(() => {
+    const deniedParam = searchParams.get("access_denied");
+    if (deniedParam) {
+      loginAs(deniedParam);
+    }
+  }, [searchParams, loginAs]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -41,5 +50,13 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
 
       <BottomNav />
     </div>
+  );
+}
+
+export const AppShell = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FAFAFA]" />}>
+      <AppShellInner>{children}</AppShellInner>
+    </Suspense>
   );
 };

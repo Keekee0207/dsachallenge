@@ -93,28 +93,28 @@ Inspired by modern monochrome habit-tracking applications:
 
 ---
 
-## 🔐 Configuring the 4 Participant Emails & Admin
+## 🔐 Registered Participants & Admin Access Control
 
-You can configure the four participant emails and admin account in two easy ways:
+The platform enforces strict private access. Only the organizer and the four participants can sign in with Google or access the challenge:
 
-### Option A: Via the Admin Dashboard UI
-1. Sign in as Admin (`admin@challenge.com`) or switch to Admin using the user profile menu.
-2. Navigate to `/admin` -> **Participant Allowlist**.
-3. Add or update the 4 participant emails and names.
+| Role | Name | Authorized Google Account | Access Rights |
+| :--- | :--- | :--- | :--- |
+| **Organizer / Admin** | Keerthana S | `keerthusan0207@gmail.com` | Full Admin Dashboard, Verification, Allowlist Management, CSV Export |
+| **Participant 1** | Harikirubha | `harikirubha8@gmail.com` | Participant Dashboard, Daily Submissions, Streaks |
+| **Participant 2** | Jeshwar Murali | `jeshwarmurali@gmail.com` | Participant Dashboard, Daily Submissions, Streaks |
+| **Participant 3** | Raveena S | `raveenas490@gmail.com` | Participant Dashboard, Daily Submissions, Streaks |
+| **Participant 4** | Iswarya | `iswarya.250096@ece.ritchennai.edu.in` | Participant Dashboard, Daily Submissions, Streaks |
 
-### Option B: Via SQL
-Run the following query in your Supabase SQL Editor:
-```sql
--- Update or insert your 4 participant emails
-INSERT INTO public.allowed_emails (email, name, role, is_active)
-VALUES
-  ('participant1@domain.com', 'Participant 1', 'participant', true),
-  ('participant2@domain.com', 'Participant 2', 'participant', true),
-  ('participant3@domain.com', 'Participant 3', 'participant', true),
-  ('participant4@domain.com', 'Participant 4', 'participant', true),
-  ('your-admin@domain.com', 'Organizer Admin', 'admin', true)
-ON CONFLICT (email) DO UPDATE SET is_active = true;
-```
+*Any other Google account will immediately receive an Access Denied restriction.*
+
+### Setting Up Google OAuth in Supabase:
+1. In your **Google Cloud Console** ([console.cloud.google.com](https://console.cloud.google.com)):
+   - Create an OAuth 2.0 Client ID (Web Application).
+   - Add Authorized Redirect URI: `https://<your-supabase-project-id>.supabase.co/auth/v1/callback`.
+2. In your **Supabase Dashboard**:
+   - Go to **Authentication** -> **Providers** -> **Google**.
+   - Enable Google and paste your **Client ID** and **Client Secret**.
+   - Set Redirect URL: `http://localhost:3000/auth/callback` (for local dev) and your production Vercel domain `https://your-domain.vercel.app/auth/callback`.
 
 ---
 
