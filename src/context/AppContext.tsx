@@ -126,16 +126,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (storedUser) {
         setCurrentUserState(JSON.parse(storedUser));
       } else {
-        // Default login as Organizer Admin (keerthusan0207@gmail.com)
-        const defaultUser: Participant = {
-          id: "p-allow-admin",
-          email: "keerthusan0207@gmail.com",
-          name: "Keerthana S (Admin)",
-          role: "admin",
-          created_at: new Date().toISOString(),
-        };
-        setCurrentUserState(defaultUser);
-        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(defaultUser));
+        // Require explicit sign-in when opening the dashboard
+        setCurrentUserState(null);
       }
 
       const storedSimulatedDate = localStorage.getItem(STORAGE_KEYS.SIMULATED_DATE);
@@ -145,7 +137,74 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) {
       console.error("Failed to load initial data from storage", e);
     }
-  }, []);
+
+    // Setup multi-device & multi-tab Realtime synchronization
+    let channel: BroadcastChannel | null = null;
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      channel = new BroadcastChannel("dsa_challenge_realtime");
+      channel.onmessage = (event) => {
+        if (event.data?.type === "NEW_SUBMISSION") {
+          setSubmissions((prev) => {
+            if (prev.some((s) => s.id === event.data.payload.id)) return prev;
+            return [event.data.payload, ...prev];
+          });
+        } else if (event.data?.type === "UPDATE_SUBMISSION") {
+          setSubmissions((prev) =>
+            prev.map((s) => (s.id === event.data.payload.id ? event.data.payload : s))
+          );
+        } else if (event.data?.type === "UPDATE_ALLOWLIST") {
+          setAllowedEmails(event.data.payload);
+        }
+      };
+    }
+
+    // Cross-tab storage listener
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEYS.SUBMISSIONS && e.newValue) {
+        setSubmissions(JSON.parse(e.newValue));
+      }
+      if (e.key === STORAGE_KEYS.ALLOWED_EMAILS && e.newValue) {
+        setAllowedEmails(JSON.parse(e.newValue));
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    // Supabase Realtime subscription
+    let supabaseSubChannel: any = null;
+    if (isSupabaseConnected) {
+      const supabase = createClient();
+      supabaseSubChannel = supabase
+        .channel("public-realtime-challenge")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "submissions" },
+          (payload) => {
+            if (payload.eventType === "INSERT") {
+              setSubmissions((prev) => [
+                payload.new as Submission,
+                ...prev.filter((s) => s.id !== payload.new.id),
+              ]);
+            } else if (payload.eventType === "UPDATE") {
+              setSubmissions((prev) =>
+                prev.map((s) => (s.id === payload.new.id ? (payload.new as Submission) : s))
+              );
+            } else if (payload.eventType === "DELETE") {
+              setSubmissions((prev) => prev.filter((s) => s.id !== payload.old.id));
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      channel?.close();
+      window.removeEventListener("storage", handleStorageChange);
+      if (supabaseSubChannel && isSupabaseConnected) {
+        const supabase = createClient();
+        supabase.removeChannel(supabaseSubChannel);
+      }
+    };
+  }, [isSupabaseConnected]);
 
   // Update current user
   const setCurrentUser = (user: Participant | null) => {
@@ -184,6 +243,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
 
     setCurrentUser(user);
+
+    // Automatically direct to appropriate dashboard
+    if (typeof window !== "undefined") {
+      if (user.role === "admin" && window.location.pathname !== "/admin") {
+        window.location.href = "/admin";
+      } else if (user.role === "participant" && window.location.pathname === "/admin") {
+        window.location.href = "/";
+      }
+    }
+
     return true;
   };
 
@@ -421,6 +490,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setSubmissions(updated);
     if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify(updated));
+      if ("BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("dsa_challenge_realtime");
+        bc.postMessage({ type: "NEW_SUBMISSION", payload: newSubmission });
+        bc.close();
+      }
+    }
+
+    if (isSupabaseConnected) {
+      try {
+        const supabase = createClient();
+        await supabase.from("submissions").insert({
+          participant_id: currentUser.id,
+          challenge_day: params.challengeDay,
+          assigned_problem_id: params.assignedProblemId,
+          solved_previously: params.solvedPreviously,
+          alternative_problem_name: params.alternativeProblemName,
+          alternative_problem_url: params.alternativeProblemUrl,
+          github_url: params.githubUrl.trim(),
+          notes: params.notes?.trim(),
+          verification_status: "verified",
+          is_day_50_assessment: params.isDay50Assessment,
+          day_50_data: params.day50Data,
+        });
+      } catch (e) {
+        console.error("Supabase insert error", e);
+      }
     }
 
     return { success: true };

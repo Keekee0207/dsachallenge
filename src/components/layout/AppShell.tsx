@@ -7,10 +7,11 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { AuthModal } from "@/components/modals/AuthModal";
 import { DateSimulatorModal } from "@/components/modals/DateSimulatorModal";
 import { AccessDenied } from "@/components/auth/AccessDenied";
+import { SignInScreen } from "@/components/auth/SignInScreen";
 import { useApp } from "@/context/AppContext";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
-  const { isAccessDenied, loginAs } = useApp();
+  const { isAccessDenied, currentUser, loginAs } = useApp();
   const searchParams = useSearchParams();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [dateSimModalOpen, setDateSimModalOpen] = useState(false);
@@ -32,6 +33,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 mb-20 md:mb-12">
         {isAccessDenied ? (
           <AccessDenied onOpenAuthModal={() => setAuthModalOpen(true)} />
+        ) : !currentUser ? (
+          <SignInScreen />
         ) : (
           children
         )}
@@ -48,7 +51,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         onClose={() => setDateSimModalOpen(false)}
       />
 
-      <BottomNav />
+      {currentUser && <BottomNav />}
     </div>
   );
 }
