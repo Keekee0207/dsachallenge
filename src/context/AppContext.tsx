@@ -209,6 +209,72 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [isSupabaseConnected]);
 
+  // Synchronize Supabase Auth session with AppContext & persistent login
+  useEffect(() => {
+    if (!isSupabaseConnected || typeof window === "undefined") return;
+
+    const supabase = createClient();
+
+    const handleAuthUser = (user: any) => {
+      if (!user?.email) return;
+      const email = user.email.toLowerCase().trim();
+
+      const allowed =
+        allowedEmails.find((a) => a.email.toLowerCase() === email && a.is_active) ||
+        INITIAL_ALLOWLIST.find((a) => a.email.toLowerCase() === email && a.is_active);
+
+      if (allowed) {
+        const participantUser: Participant = {
+          id: `p-${allowed.id}`,
+          email: allowed.email,
+          name: allowed.name || user.user_metadata?.full_name || email.split("@")[0],
+          role: allowed.role,
+          avatar_url: user.user_metadata?.avatar_url,
+          created_at: allowed.created_at || new Date().toISOString(),
+        };
+
+        setCurrentUserState(participantUser);
+        setIsAccessDenied(false);
+        setDeniedEmail(null);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(participantUser));
+
+        // Direct admin to /admin if on participant home
+        if (participantUser.role === "admin" && window.location.pathname === "/") {
+          window.location.href = "/admin";
+        }
+      } else {
+        setIsAccessDenied(true);
+        setDeniedEmail(email);
+        setCurrentUserState(null);
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+        supabase.auth.signOut();
+      }
+    };
+
+    // 1. Check active session on initial load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        handleAuthUser(session.user);
+      }
+    });
+
+    // 2. Listen for auth changes (fires immediately upon returning from Google OAuth redirect)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        handleAuthUser(session.user);
+      } else if (event === "SIGNED_OUT") {
+        setCurrentUserState(null);
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [isSupabaseConnected, allowedEmails]);
+
   // Update current user
   const setCurrentUser = (user: Participant | null) => {
     setCurrentUserState(user);

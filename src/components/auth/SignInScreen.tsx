@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import {
   Lock,
@@ -12,9 +13,16 @@ import {
 
 export const SignInScreen: React.FC = () => {
   const { signInWithGoogle, isSupabaseConnected, loginAs, allowedEmails } = useApp();
+  const searchParams = useSearchParams();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showLocalDevBypass, setShowLocalDevBypass] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("auth_error")) {
+      setErrorMsg("Google sign-in could not be completed. Please ensure your Supabase redirect URLs and Google Cloud credentials are saved, then try again.");
+    }
+  }, [searchParams]);
 
   // Sign in through Google Authentication
   const handleGoogleSignIn = async () => {
