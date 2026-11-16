@@ -5,72 +5,26 @@ import { useApp } from "@/context/AppContext";
 import {
   Lock,
   AlertCircle,
-  ArrowRight,
   ShieldCheck,
-  Mail,
-  KeyRound,
   CheckCircle2,
-  RefreshCw,
-  Edit2,
+  Sparkles,
 } from "lucide-react";
 
 export const SignInScreen: React.FC = () => {
-  const { sendEmailOtp, verifyEmailOtp } = useApp();
-  const [emailInput, setEmailInput] = useState("");
-  const [otpInput, setOtpInput] = useState("");
-  const [step, setStep] = useState<"email" | "otp">("email");
+  const { signInWithGoogle, isSupabaseConnected, loginAs, allowedEmails } = useApp();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [demoCode, setDemoCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showLocalDevBypass, setShowLocalDevBypass] = useState(false);
 
-  // Step 1: Request 6-digit verification code to email
-  const handleSendCode = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  // Sign in through Google Authentication
+  const handleGoogleSignIn = async () => {
     setErrorMsg(null);
-    setSuccessMsg(null);
-    setDemoCode(null);
-
-    const clean = emailInput.trim().toLowerCase();
-    if (!clean) {
-      setErrorMsg("Please enter your registered email address.");
-      return;
-    }
-
     setIsLoading(true);
-    const res = await sendEmailOtp(clean);
-    setIsLoading(false);
 
-    if (!res.success) {
-      setErrorMsg(res.error || "Unable to send verification code. Please check your email.");
-      return;
-    }
-
-    if (res.demoCode) {
-      setDemoCode(res.demoCode);
-    }
-
-    setSuccessMsg(`A 6-digit verification code was sent to ${clean}. Please check your inbox.`);
-    setStep("otp");
-  };
-
-  // Step 2: Verify the 6-digit code (must be verified from email inbox)
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-
-    const cleanOtp = otpInput.trim();
-    if (!cleanOtp) {
-      setErrorMsg("Please enter the 6-digit verification code sent to your email.");
-      return;
-    }
-
-    setIsLoading(true);
-    const res = await verifyEmailOtp(emailInput.trim(), cleanOtp);
-    setIsLoading(false);
-
-    if (!res.success) {
-      setErrorMsg(res.error || "Invalid verification code. Please check your inbox and try again.");
+    const res = await signInWithGoogle();
+    if (!res.success && res.error) {
+      setErrorMsg(res.error);
+      setIsLoading(false);
     }
   };
 
@@ -81,7 +35,7 @@ export const SignInScreen: React.FC = () => {
         <div className="flex items-center justify-center mb-6">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-neutral-950 text-white text-xs font-semibold tracking-wider uppercase shadow-xs">
             <Lock className="w-3 h-3 text-neutral-300" />
-            <span>Email Verification Required</span>
+            <span>Google Authentication</span>
           </div>
         </div>
 
@@ -95,8 +49,8 @@ export const SignInScreen: React.FC = () => {
             50 Days DSA Challenge
           </h2>
 
-          <p className="text-xs sm:text-sm text-neutral-500 mt-1 max-w-xs mx-auto leading-relaxed">
-            Nov 21, 2026 – Jan 9, 2027 • Private Accountability Cohort
+          <p className="text-xs sm:text-sm text-neutral-500 mt-2 max-w-xs mx-auto leading-relaxed">
+            Sign in with your registered Google account. Once signed in on your device, you can directly access your dashboard anytime.
           </p>
         </div>
 
@@ -104,154 +58,85 @@ export const SignInScreen: React.FC = () => {
         {errorMsg && (
           <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5 animate-in fade-in">
             <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-            <span className="leading-relaxed font-medium">{errorMsg}</span>
+            <div className="leading-relaxed">
+              <span className="font-semibold block mb-0.5">Authentication Note</span>
+              <span>{errorMsg}</span>
+            </div>
           </div>
         )}
 
-        {/* Success / OTP Sent Notification */}
-        {successMsg && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5 animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-            <span className="leading-relaxed font-medium">{successMsg}</span>
+        {/* PRIMARY ACTION: Sign In through Google */}
+        <div className="space-y-4">
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-2xl border border-neutral-300 hover:border-neutral-900 bg-white hover:bg-neutral-50 text-neutral-900 font-semibold text-sm transition-all shadow-xs active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+          >
+            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            <span>{isLoading ? "Connecting to Google..." : "Continue with Google"}</span>
+          </button>
+
+          <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
+            Choose your Gmail account. Access is restricted to the 4 registered participants and organizer.
+          </p>
+        </div>
+
+        {/* Local Dev / Offline Test Helper (Only visible if Supabase is not connected in .env.local) */}
+        {!isSupabaseConnected && (
+          <div className="mt-6 pt-5 border-t border-neutral-100">
+            <button
+              onClick={() => setShowLocalDevBypass(!showLocalDevBypass)}
+              className="w-full text-center text-[11px] text-neutral-400 hover:text-neutral-700 flex items-center justify-center gap-1"
+            >
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              <span>Offline / Local Preview Mode</span>
+            </button>
+
+            {showLocalDevBypass && (
+              <div className="mt-3 p-3 rounded-2xl bg-neutral-50 border border-neutral-200 text-xs space-y-2 animate-in fade-in">
+                <p className="text-[11px] text-neutral-500 font-medium">
+                  Supabase keys not yet in local <code>.env.local</code>. Click an account to preview locally:
+                </p>
+                <div className="space-y-1.5 pt-1">
+                  {allowedEmails.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => loginAs(a.email)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-white border border-neutral-200 hover:border-neutral-900 text-left transition-colors"
+                    >
+                      <span className="font-semibold text-neutral-900">{a.name}</span>
+                      <span className="text-[10px] text-neutral-400 font-mono truncate max-w-[140px]">
+                        {a.email}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Demo Mode Helper (Only when Supabase API keys not configured) */}
-        {demoCode && (
-          <div className="mb-5 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-between animate-in fade-in">
-            <span className="font-medium">
-              Demo Code: <strong className="font-mono text-sm tracking-wider">{demoCode}</strong>
-            </span>
-            <button
-              type="button"
-              onClick={() => setOtpInput(demoCode)}
-              className="text-[11px] underline font-semibold text-amber-900 hover:text-amber-950"
-            >
-              Auto-fill code
-            </button>
-          </div>
-        )}
-
-        {step === "email" ? (
-          /* STEP 1: Enter Registered Email Address */
-          <form onSubmit={handleSendCode} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-neutral-700">
-                Registered Email Address
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3.5 pointer-events-none" />
-                <input
-                  type="email"
-                  placeholder="e.g. yourname@gmail.com"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full text-xs sm:text-sm pl-10 pr-4 py-3 rounded-2xl border border-neutral-300 focus:outline-none focus:border-neutral-950 bg-white placeholder:text-neutral-400 font-medium"
-                  required
-                  autoFocus
-                />
-              </div>
-              <p className="text-[11px] text-neutral-400 leading-relaxed pt-0.5">
-                A 6-digit one-time code will be sent to this email to verify that you own the inbox.
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 px-4 rounded-2xl bg-neutral-950 text-white text-xs sm:text-sm font-semibold hover:bg-neutral-800 transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
-            >
-              <span>{isLoading ? "Sending 6-digit code..." : "Send Verification Code"}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
-        ) : (
-          /* STEP 2: Enter 6-digit OTP Code from Inbox */
-          <form onSubmit={handleVerifyOtp} className="space-y-4 animate-in fade-in">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-neutral-700">6-Digit Code</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("email");
-                    setErrorMsg(null);
-                    setSuccessMsg(null);
-                    setDemoCode(null);
-                  }}
-                  className="inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-neutral-900 underline"
-                >
-                  <Edit2 className="w-3 h-3" />
-                  <span>Change email</span>
-                </button>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs text-neutral-600 flex items-center justify-between">
-                <span className="font-mono truncate">{emailInput}</span>
-                <span className="text-[10px] uppercase font-semibold text-neutral-400 bg-white px-2 py-0.5 rounded-md border border-neutral-200">
-                  Inbox
-                </span>
-              </div>
-
-              <div className="relative mt-2">
-                <KeyRound className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3.5 pointer-events-none" />
-                <input
-                  type="text"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ""))}
-                  className="w-full text-center tracking-[0.4em] font-mono text-xl sm:text-2xl font-bold py-2.5 pl-10 pr-4 rounded-2xl border border-neutral-300 focus:outline-none focus:border-neutral-950 bg-white"
-                  required
-                  autoFocus
-                />
-              </div>
-              <p className="text-[11px] text-neutral-400 text-center pt-1">
-                Open your email inbox and enter the 6 digits.
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 px-4 rounded-2xl bg-neutral-950 text-white text-xs sm:text-sm font-semibold hover:bg-neutral-800 transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
-            >
-              <span>{isLoading ? "Verifying..." : "Verify Code & Sign In"}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center justify-between pt-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleSendCode()}
-                disabled={isLoading}
-                className="inline-flex items-center gap-1.5 text-neutral-500 hover:text-neutral-900 transition-colors"
-              >
-                <RefreshCw className="w-3 h-3" />
-                <span>Resend Code</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setStep("email");
-                  setOtpInput("");
-                  setErrorMsg(null);
-                  setSuccessMsg(null);
-                  setDemoCode(null);
-                }}
-                className="text-neutral-500 hover:text-neutral-900 transition-colors"
-              >
-                Back to email
-              </button>
-            </div>
-          </form>
         )}
 
         {/* Security Footer Notice */}
         <div className="pt-6 mt-6 border-t border-neutral-100 flex items-center justify-center gap-1.5 text-center text-[11px] text-neutral-400">
           <ShieldCheck className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-          <span>Strictly restricted to the 4 participants & organizer</span>
+          <span>Strict allowlist enforcement • No passwords needed</span>
         </div>
       </div>
     </div>
