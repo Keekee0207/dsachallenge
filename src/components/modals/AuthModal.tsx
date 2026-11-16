@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { X, Shield, Check, Lock, AlertCircle, ArrowRight, Sparkles } from "lucide-react";
+import { X, Lock, AlertCircle, ArrowRight, ShieldCheck } from "lucide-react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -10,7 +10,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { loginAs, allowedEmails, currentUser, signInWithGoogle, isSupabaseConnected } = useApp();
+  const { loginAs, signInWithGoogle } = useApp();
   const [customEmail, setCustomEmail] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -30,29 +30,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const handleCustomLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!customEmail.trim()) return;
+    const clean = customEmail.trim().toLowerCase();
+    if (!clean) return;
 
-    const success = loginAs(customEmail.trim());
+    const success = loginAs(clean);
     if (success) {
       onClose();
     } else {
       setErrorMsg(
-        `Access Denied: "${customEmail}" is not an authorized participant email. Only the 4 registered participants and the challenge organizer can access this platform.`
+        `Access Denied: "${customEmail}" is not an authorized email for this private cohort.`
       );
-    }
-  };
-
-  const handleSelectPreset = (email: string) => {
-    setErrorMsg(null);
-    const success = loginAs(email);
-    if (success) {
-      onClose();
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-elevated border border-neutral-200 relative max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-elevated border border-neutral-200 relative">
         <button
           onClick={onClose}
           className="absolute top-6 right-6 w-8 h-8 rounded-full hover:bg-neutral-100 flex items-center justify-center text-neutral-400 hover:text-neutral-700 transition-colors"
@@ -60,21 +53,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <X className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-6 h-6 rounded-lg bg-neutral-900 text-white flex items-center justify-center text-xs">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <div className="w-6 h-6 rounded-lg bg-neutral-950 text-white flex items-center justify-center text-xs">
             <Lock className="w-3.5 h-3.5" />
           </div>
           <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-            Google Authentication Gate
+            Account Access
           </span>
         </div>
 
         <h3 className="text-xl font-bold tracking-tight text-neutral-900 mb-1">
-          Sign In to Challenge
+          Sign In
         </h3>
 
-        <p className="text-xs text-neutral-500 mb-5 leading-relaxed">
-          Private platform for exactly four participants and the organizer. Only authorized emails can access the dashboard.
+        <p className="text-xs text-neutral-500 mb-6 leading-relaxed">
+          Sign in with your authorized Google account or registered participant email.
         </p>
 
         {errorMsg && (
@@ -84,14 +77,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {/* Primary Action: Official Google Sign-In Button */}
-        <div className="mb-6">
+        {/* Primary Action: Google Sign-In */}
+        <div className="mb-5">
           <button
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl border border-neutral-300 hover:border-neutral-400 bg-white hover:bg-neutral-50 text-neutral-800 font-semibold text-xs sm:text-sm transition-all shadow-xs group"
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl border border-neutral-300 hover:border-neutral-900 bg-white hover:bg-neutral-50 text-neutral-900 font-semibold text-xs sm:text-sm transition-all shadow-xs group"
           >
-            {/* Google G Icon */}
             <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
@@ -110,102 +102,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
               />
             </svg>
-            <span>{isGoogleLoading ? "Connecting Google..." : "Continue with Google"}</span>
+            <span>{isGoogleLoading ? "Connecting..." : "Continue with Google"}</span>
           </button>
         </div>
 
         <div className="relative flex items-center justify-center mb-5">
           <div className="border-t border-neutral-100 w-full" />
           <span className="bg-white px-3 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-            Authorized Email Allowlist
+            or with email
           </span>
         </div>
 
-        {/* List of the 5 Authorized Accounts */}
-        <div className="space-y-2 mb-6">
-          {allowedEmails.map((allowed) => {
-            const isCurrent = currentUser?.email.toLowerCase() === allowed.email.toLowerCase();
-            const isAdmin = allowed.role === "admin";
-
-            return (
-              <button
-                key={allowed.id}
-                onClick={() => handleSelectPreset(allowed.email)}
-                className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-all ${
-                  isCurrent
-                    ? "border-neutral-950 bg-neutral-950 text-white shadow-xs"
-                    : "border-neutral-200 hover:border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-800"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isCurrent
-                        ? "bg-white text-neutral-950"
-                        : isAdmin
-                        ? "bg-neutral-900 text-white"
-                        : "bg-neutral-100 text-neutral-700"
-                    }`}
-                  >
-                    {isAdmin ? <Shield className="w-3.5 h-3.5" /> : allowed.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold">{allowed.name}</span>
-                      <span
-                        className={`text-[9px] px-1.5 py-0.2 rounded-full uppercase font-medium ${
-                          isCurrent
-                            ? "bg-neutral-800 text-neutral-200"
-                            : isAdmin
-                            ? "bg-neutral-900 text-white"
-                            : "bg-neutral-100 text-neutral-600"
-                        }`}
-                      >
-                        {allowed.role}
-                      </span>
-                    </div>
-                    <span
-                      className={`text-[11px] font-mono ${
-                        isCurrent ? "text-neutral-400" : "text-neutral-500"
-                      }`}
-                    >
-                      {allowed.email}
-                    </span>
-                  </div>
-                </div>
-
-                {isCurrent && <Check className="w-4 h-4 text-white" />}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Custom Email Input (to test unauthorized email access denied) */}
-        <form onSubmit={handleCustomLogin} className="pt-4 border-t border-neutral-100">
-          <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block mb-1.5">
-            Test Unlisted Google Account (Access Denied Check)
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              placeholder="unauthorized@gmail.com"
-              value={customEmail}
-              onChange={(e) => setCustomEmail(e.target.value)}
-              className="flex-1 text-xs px-3 py-2 rounded-xl border border-neutral-300 bg-white"
-              required
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl bg-neutral-900 text-white text-xs font-semibold hover:bg-neutral-800 transition-colors flex items-center gap-1"
-            >
-              <span>Test</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-          <span className="text-[10px] text-neutral-400 mt-1 block">
-            Verifies that unauthorized emails are blocked with an access-denied message.
-          </span>
+        {/* Custom Email Form */}
+        <form onSubmit={handleCustomLogin} className="space-y-3">
+          <input
+            type="email"
+            placeholder="Enter your registered email"
+            value={customEmail}
+            onChange={(e) => setCustomEmail(e.target.value)}
+            className="w-full text-xs sm:text-sm px-4 py-3 rounded-2xl border border-neutral-300 focus:outline-none focus:border-neutral-950 bg-white"
+            required
+          />
+          <button
+            type="submit"
+            className="w-full py-3 px-4 rounded-2xl bg-neutral-950 text-white text-xs sm:text-sm font-semibold hover:bg-neutral-800 transition-colors flex items-center justify-center gap-1.5"
+          >
+            <span>Sign In</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </form>
+
+        <div className="mt-5 pt-4 border-t border-neutral-100 flex items-center justify-center gap-1.5 text-center text-[11px] text-neutral-400">
+          <ShieldCheck className="w-3.5 h-3.5 text-neutral-400" />
+          <span>Strict allowlist enforcement</span>
+        </div>
       </div>
     </div>
   );

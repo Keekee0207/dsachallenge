@@ -2,13 +2,14 @@
 
 import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { Lock, Shield, Check, AlertCircle, ArrowRight, Sparkles, CheckCircle2 } from "lucide-react";
+import { Lock, AlertCircle, ArrowRight, ShieldCheck, ChevronDown } from "lucide-react";
 
 export const SignInScreen: React.FC = () => {
-  const { loginAs, allowedEmails, signInWithGoogle, isSupabaseConnected } = useApp();
+  const { loginAs, allowedEmails, signInWithGoogle } = useApp();
   const [emailInput, setEmailInput] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showDevShortcuts, setShowDevShortcuts] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
@@ -23,36 +24,32 @@ export const SignInScreen: React.FC = () => {
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!emailInput.trim()) return;
+    const clean = emailInput.trim().toLowerCase();
+    if (!clean) return;
 
-    const ok = loginAs(emailInput.trim());
+    const ok = loginAs(clean);
     if (!ok) {
       setErrorMsg(
-        `Access Denied: "${emailInput}" is not on the private participant allowlist. Only the 4 registered participants and the organizer are permitted.`
+        `Access Denied: "${emailInput}" is not an authorized email. This platform is strictly private to the 4 invited participants and organizer.`
       );
     }
   };
 
-  const handleSelectAccount = (email: string) => {
-    setErrorMsg(null);
-    loginAs(email);
-  };
-
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-8 px-4">
-      <div className="habit-card rounded-3xl max-w-md w-full p-6 sm:p-9 border border-neutral-200/90 shadow-elevated relative overflow-hidden bg-white">
-        {/* Top Header Pill matching Habit Tracking design reference Screen 1 */}
+    <div className="min-h-[75vh] flex items-center justify-center py-6 px-4">
+      <div className="habit-card rounded-3xl max-w-md w-full p-6 sm:p-9 border border-neutral-200/90 shadow-elevated bg-white">
+        {/* Top Header Pill */}
         <div className="flex items-center justify-center mb-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-neutral-950 text-white text-xs font-semibold tracking-wider uppercase shadow-xs">
-            <Lock className="w-3.5 h-3.5 text-neutral-300" />
-            <span>Private Challenge Gate</span>
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-neutral-950 text-white text-xs font-semibold tracking-wider uppercase shadow-xs">
+            <Lock className="w-3 h-3 text-neutral-300" />
+            <span>Private Cohort Gate</span>
           </div>
         </div>
 
-        {/* Minimal Illustration / Greeting */}
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-3xl bg-neutral-100 border border-neutral-200 flex items-center justify-center mx-auto mb-3 shadow-inner">
-            <span className="text-2xl font-black text-neutral-900 tracking-tighter">50</span>
+        {/* Minimal Habit Tracker Logo & Greeting */}
+        <div className="text-center mb-7">
+          <div className="w-14 h-14 rounded-2xl bg-neutral-950 text-white flex items-center justify-center mx-auto mb-3 shadow-sm font-bold text-lg font-mono">
+            50
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900">
@@ -60,7 +57,7 @@ export const SignInScreen: React.FC = () => {
           </h2>
 
           <p className="text-xs sm:text-sm text-neutral-500 mt-1 max-w-xs mx-auto leading-relaxed">
-            Kickoff on <strong>November 21, 2026</strong>. Sign in with your registered Google account to access your challenge dashboard.
+            Nov 21, 2026 – Jan 9, 2027. Sign in with your registered account to access your challenge dashboard.
           </p>
         </div>
 
@@ -72,11 +69,11 @@ export const SignInScreen: React.FC = () => {
         )}
 
         {/* Primary Action: Continue with Google */}
-        <div className="space-y-4 mb-6">
+        <div className="mb-5">
           <button
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading}
-            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-2xl border border-neutral-300 hover:border-neutral-400 bg-white hover:bg-neutral-50 text-neutral-800 font-semibold text-xs sm:text-sm transition-all shadow-xs active:scale-[0.99]"
+            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-2xl border border-neutral-300 hover:border-neutral-900 bg-white hover:bg-neutral-50 text-neutral-900 font-semibold text-xs sm:text-sm transition-all shadow-xs active:scale-[0.99]"
           >
             <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
               <path
@@ -96,81 +93,78 @@ export const SignInScreen: React.FC = () => {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
               />
             </svg>
-            <span>{isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
+            <span>{isGoogleLoading ? "Connecting..." : "Continue with Google"}</span>
           </button>
         </div>
 
+        {/* Divider */}
         <div className="relative flex items-center justify-center mb-5">
           <div className="border-t border-neutral-100 w-full" />
           <span className="bg-white px-3 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-            Select Your Account
+            or sign in with email
           </span>
         </div>
 
-        {/* The 5 Authorized Profiles for 1-Click Access */}
-        <div className="space-y-2 mb-6">
-          {allowedEmails.map((allowed) => {
-            const isAdmin = allowed.role === "admin";
-            return (
-              <button
-                key={allowed.id}
-                onClick={() => handleSelectAccount(allowed.email)}
-                className="w-full p-3 rounded-2xl border border-neutral-200 hover:border-neutral-900 bg-white hover:bg-neutral-50/80 text-neutral-800 text-left flex items-center justify-between transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isAdmin ? "bg-neutral-950 text-white" : "bg-neutral-100 text-neutral-700"
-                    }`}
-                  >
-                    {isAdmin ? <Shield className="w-3.5 h-3.5" /> : allowed.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-neutral-900">{allowed.name}</span>
-                      <span
-                        className={`text-[9px] px-1.5 py-0.2 rounded-full uppercase font-medium ${
-                          isAdmin ? "bg-neutral-950 text-white" : "bg-neutral-100 text-neutral-600"
-                        }`}
-                      >
-                        {allowed.role}
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-mono text-neutral-500">{allowed.email}</span>
-                  </div>
-                </div>
-
-                <ArrowRight className="w-3.5 h-3.5 text-neutral-300 group-hover:text-neutral-900 group-hover:translate-x-0.5 transition-all" />
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Or enter custom email */}
-        <form onSubmit={handleEmailSubmit} className="pt-4 border-t border-neutral-100">
-          <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block mb-1.5">
-            Or Sign In with Email
-          </label>
-          <div className="flex gap-2">
+        {/* Email Sign In Form */}
+        <form onSubmit={handleEmailSubmit} className="space-y-3 mb-6">
+          <div>
             <input
               type="email"
-              placeholder="Enter your email"
+              placeholder="name@example.com"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
-              className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-neutral-300 focus:outline-none focus:border-neutral-950 bg-white"
+              className="w-full text-xs sm:text-sm px-4 py-3 rounded-2xl border border-neutral-300 focus:outline-none focus:border-neutral-950 bg-white placeholder:text-neutral-400 transition-colors"
               required
             />
-            <button
-              type="submit"
-              className="px-4 py-2.5 rounded-xl bg-neutral-950 text-white text-xs font-semibold hover:bg-neutral-800 transition-colors"
-            >
-              Sign In
-            </button>
           </div>
-          <span className="text-[10px] text-neutral-400 mt-1.5 block">
-            Only emails on the challenge allowlist will be granted access.
-          </span>
+          <button
+            type="submit"
+            className="w-full py-3 px-4 rounded-2xl bg-neutral-950 text-white text-xs sm:text-sm font-semibold hover:bg-neutral-800 transition-all shadow-xs flex items-center justify-center gap-1.5"
+          >
+            <span>Sign In with Email</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </form>
+
+        {/* Security Footer Notice */}
+        <div className="pt-4 border-t border-neutral-100 flex items-center justify-center gap-1.5 text-center text-[11px] text-neutral-400">
+          <ShieldCheck className="w-3.5 h-3.5 text-neutral-400" />
+          <span>Restricted to authorized cohort participants</span>
+        </div>
+
+        {/* Collapsed Local Dev Shortcuts (Only for manual testing on localhost, hidden by default) */}
+        <div className="mt-4 pt-3 border-t border-neutral-100 text-center">
+          <button
+            type="button"
+            onClick={() => setShowDevShortcuts(!showDevShortcuts)}
+            className="text-[10px] text-neutral-400 hover:text-neutral-600 transition-colors inline-flex items-center gap-1"
+          >
+            <span>Local testing shortcuts</span>
+            <ChevronDown
+              className={`w-3 h-3 transition-transform ${showDevShortcuts ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {showDevShortcuts && (
+            <div className="mt-2 space-y-1.5 p-2 rounded-xl bg-neutral-50 text-left animate-in fade-in">
+              <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block px-1">
+                Click to test as:
+              </span>
+              {allowedEmails.map((allowed) => (
+                <button
+                  key={allowed.id}
+                  onClick={() => loginAs(allowed.email)}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white text-[11px] text-neutral-700 flex items-center justify-between border border-transparent hover:border-neutral-200 transition-all"
+                >
+                  <span className="font-medium truncate">{allowed.name}</span>
+                  <span className="text-[9px] font-mono text-neutral-400 uppercase">
+                    {allowed.role}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
