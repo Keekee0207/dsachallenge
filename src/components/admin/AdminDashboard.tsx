@@ -72,12 +72,13 @@ export const AdminDashboard: React.FC = () => {
 
   // Metrics
   const currentDay = challengeInfo.currentDay > 0 ? challengeInfo.currentDay : 1;
+  const activeParticipantsCount = allowedEmails.filter((a) => a.role === "participant" && a.is_active).length || 1;
   const totalSubmissions = submissions.length;
   const completedToday = submissions.filter((s) => s.challenge_day === currentDay).length;
-  const pendingToday = Math.max(0, 4 - completedToday);
+  const pendingToday = Math.max(0, activeParticipantsCount - completedToday);
   const overallCompletedSum = participantStats.reduce((sum, p) => sum + p.completed_count, 0);
-  const overallMaxPossible = 50 * 4;
-  const overallPercentage = Math.round((overallCompletedSum / overallMaxPossible) * 100);
+  const overallMaxPossible = 50 * activeParticipantsCount;
+  const overallPercentage = overallMaxPossible > 0 ? Math.round((overallCompletedSum / overallMaxPossible) * 100) : 0;
 
   // CSV Export Function
   const handleExportCSV = () => {
