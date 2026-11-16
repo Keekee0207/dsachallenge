@@ -28,9 +28,12 @@ interface AppContextType {
   currentRole: Role;
   isAccessDenied: boolean;
   deniedEmail: string | null;
+  clearAccessDenied: () => void;
   setCurrentUser: (user: Participant | null) => void;
   loginAs: (email: string) => boolean;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  sendEmailOtp: (email: string) => Promise<{ success: boolean; error?: string; demoCode?: string }>;
+  verifyEmailOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   
   // Date & Challenge Info
@@ -279,6 +282,91 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         error: "Supabase Google OAuth credentials not found in .env.local. You can test sign-in instantly using the authorized Google accounts listed below!",
       };
     }
+  };
+
+  const sendEmailOtp = async (inputEmail: string): Promise<{ success: boolean; error?: string; demoCode?: string }> => {
+    const cleanEmail = inputEmail.trim().toLowerCase();
+    const allowed = allowedEmails.find(
+      (a) => a.email.toLowerCase() === cleanEmail && a.is_active
+    );
+
+    if (!allowed) {
+      return {
+        success: false,
+        error: `Access Denied: "${cleanEmail}" is not an authorized participant on the allowlist. Only cohort members can receive codes.`,
+      };
+    }
+
+    if (isSupabaseConnected) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.auth.signInWithOtp({
+          email: cleanEmail,
+          options: {
+            emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
+          },
+        });
+        if (error) return { success: false, error: error.message };
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    } else {
+      // Offline / Local Demo mode when Supabase is not connected in .env.local
+      const mockCode = "502026";
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`demo_otp_${cleanEmail}`, mockCode);
+      }
+      return { success: true, demoCode: mockCode };
+    }
+  };
+
+  const verifyEmailOtp = async (
+    inputEmail: string,
+    token: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = inputEmail.trim().toLowerCase();
+    const allowed = allowedEmails.find(
+      (a) => a.email.toLowerCase() === cleanEmail && a.is_active
+    );
+
+    if (!allowed) {
+      return { success: false, error: "Unauthorized email address." };
+    }
+
+    const cleanToken = token.trim();
+    if (!cleanToken) {
+      return { success: false, error: "Please enter the 6-digit verification code." };
+    }
+
+    if (isSupabaseConnected) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.auth.verifyOtp({
+          email: cleanEmail,
+          token: cleanToken,
+          type: "email",
+        });
+        if (error) return { success: false, error: error.message };
+
+        loginAs(cleanEmail);
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    } else {
+      const stored = (typeof window !== "undefined" && sessionStorage.getItem(`demo_otp_${cleanEmail}`)) || "502026";
+      if (cleanToken !== stored && cleanToken !== "502026") {
+        return { success: false, error: "Invalid verification code. Please enter the correct 6-digit code." };
+      }
+      loginAs(cleanEmail);
+      return { success: true };
+    }
+  };
+
+  const clearAccessDenied = () => {
+    setIsAccessDenied(false);
+    setDeniedEmail(null);
   };
 
   const logout = async () => {
@@ -583,9 +671,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         currentRole: currentUser?.role || "participant",
         isAccessDenied,
         deniedEmail,
+        clearAccessDenied,
         setCurrentUser,
         loginAs,
         signInWithGoogle,
+        sendEmailOtp,
+        verifyEmailOtp,
         logout,
         simulatedDate,
         setSimulatedDate,
