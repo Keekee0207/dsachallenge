@@ -13,7 +13,8 @@ VALUES
   ('harikirubha8@gmail.com', 'Harikirubha', 'participant', true),
   ('jeshwarmurali@gmail.com', 'Jeshwar Murali', 'participant', true),
   ('raveenas490@gmail.com', 'Raveena S', 'participant', true),
-  ('iswarya.250096@ece.ritchennai.edu.in', 'Iswarya', 'participant', true)
+  ('iswarya.250096@ece.ritchennai.edu.in', 'Iswarya', 'participant', true),
+  ('keerthanasankarsankar@gmail.com', 'Keerthana Sankar', 'participant', true)
 ON CONFLICT (email) DO NOTHING;
 
 -- 3. Insert All 50 DSA Roadmap Problems

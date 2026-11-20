@@ -41,4 +41,12 @@ export const INITIAL_ALLOWLIST: AllowedEmail[] = [
     is_active: true,
     created_at: "2026-11-01T00:00:00Z",
   },
+  {
+    id: "part-keerthanasankar",
+    email: "keerthanasankarsankar@gmail.com",
+    name: "Keerthana Sankar",
+    role: "participant",
+    is_active: true,
+    created_at: "2026-11-20T00:00:00Z",
+  },
 ];

@@ -109,11 +109,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const storedAllowlist = localStorage.getItem(STORAGE_KEYS.ALLOWED_EMAILS);
+      let mergedAllowlist = [...INITIAL_ALLOWLIST];
       if (storedAllowlist) {
-        setAllowedEmails(JSON.parse(storedAllowlist));
-      } else {
-        localStorage.setItem(STORAGE_KEYS.ALLOWED_EMAILS, JSON.stringify(INITIAL_ALLOWLIST));
+        try {
+          const parsed: AllowedEmail[] = JSON.parse(storedAllowlist);
+          const map = new Map<string, AllowedEmail>();
+          INITIAL_ALLOWLIST.forEach((a) => map.set(a.email.toLowerCase(), a));
+          parsed.forEach((item) => {
+            if (!map.has(item.email.toLowerCase())) {
+              map.set(item.email.toLowerCase(), item);
+            }
+          });
+          mergedAllowlist = Array.from(map.values());
+        } catch (e) {
+          console.error("Failed to parse stored allowlist", e);
+        }
       }
+      setAllowedEmails(mergedAllowlist);
+      localStorage.setItem(STORAGE_KEYS.ALLOWED_EMAILS, JSON.stringify(mergedAllowlist));
 
       const storedProblems = localStorage.getItem(STORAGE_KEYS.PROBLEMS);
       if (storedProblems) {
@@ -176,6 +189,33 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     let supabaseSubChannel: any = null;
     if (isSupabaseConnected) {
       const supabase = createClient();
+
+      // Fetch allowed emails from Supabase to stay in sync across devices
+      supabase
+        .from("allowed_emails")
+        .select("*")
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            const map = new Map<string, AllowedEmail>();
+            INITIAL_ALLOWLIST.forEach((a) => map.set(a.email.toLowerCase(), a));
+            data.forEach((dbItem: any) => {
+              map.set(dbItem.email.toLowerCase(), {
+                id: dbItem.id || `db-${dbItem.email}`,
+                email: dbItem.email.toLowerCase(),
+                name: dbItem.name,
+                role: dbItem.role,
+                is_active: dbItem.is_active,
+                created_at: dbItem.created_at,
+              });
+            });
+            const merged = Array.from(map.values());
+            setAllowedEmails(merged);
+            if (typeof window !== "undefined") {
+              localStorage.setItem(STORAGE_KEYS.ALLOWED_EMAILS, JSON.stringify(merged));
+            }
+          }
+        });
+
       supabaseSubChannel = supabase
         .channel("public-realtime-challenge")
         .on(
@@ -290,9 +330,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // Login handler with email allowlist checking
   const loginAs = (inputEmail: string): boolean => {
     const cleanEmail = inputEmail.trim().toLowerCase();
-    const allowed = allowedEmails.find(
-      (a) => a.email.toLowerCase() === cleanEmail && a.is_active
-    );
+    const allowed =
+      allowedEmails.find((a) => a.email.toLowerCase() === cleanEmail && a.is_active) ||
+      INITIAL_ALLOWLIST.find((a) => a.email.toLowerCase() === cleanEmail && a.is_active);
 
     if (!allowed) {
       setIsAccessDenied(true);
@@ -352,9 +392,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const sendEmailOtp = async (inputEmail: string): Promise<{ success: boolean; error?: string; demoCode?: string }> => {
     const cleanEmail = inputEmail.trim().toLowerCase();
-    const allowed = allowedEmails.find(
-      (a) => a.email.toLowerCase() === cleanEmail && a.is_active
-    );
+    const allowed =
+      allowedEmails.find((a) => a.email.toLowerCase() === cleanEmail && a.is_active) ||
+      INITIAL_ALLOWLIST.find((a) => a.email.toLowerCase() === cleanEmail && a.is_active);
 
     if (!allowed) {
       return {
@@ -392,9 +432,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     token: string
   ): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = inputEmail.trim().toLowerCase();
-    const allowed = allowedEmails.find(
-      (a) => a.email.toLowerCase() === cleanEmail && a.is_active
-    );
+    const allowed =
+      allowedEmails.find((a) => a.email.toLowerCase() === cleanEmail && a.is_active) ||
+      INITIAL_ALLOWLIST.find((a) => a.email.toLowerCase() === cleanEmail && a.is_active);
 
     if (!allowed) {
       return { success: false, error: "Unauthorized email address." };
@@ -710,6 +750,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEYS.ALLOWED_EMAILS, JSON.stringify(updated));
     }
+
+    if (isSupabaseConnected) {
+      try {
+        const supabase = createClient();
+        await supabase.from("allowed_emails").upsert(
+          {
+            email: cleanEmail,
+            name: name.trim(),
+            role,
+            is_active: true,
+          },
+          { onConflict: "email" }
+        );
+      } catch (e) {
+        console.error("Supabase upsert allowed_email error", e);
+      }
+    }
     return true;
   };
 
@@ -719,13 +776,42 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEYS.ALLOWED_EMAILS, JSON.stringify(updated));
     }
+
+    if (isSupabaseConnected) {
+      try {
+        const target = updated.find((a) => a.id === id);
+        if (target) {
+          const supabase = createClient();
+          await supabase
+            .from("allowed_emails")
+            .update({
+              name: target.name,
+              role: target.role,
+              is_active: target.is_active,
+            })
+            .eq("email", target.email);
+        }
+      } catch (e) {
+        console.error("Supabase update allowed_email error", e);
+      }
+    }
   };
 
   const deleteAllowedEmail = async (id: string) => {
+    const target = allowedEmails.find((a) => a.id === id);
     const updated = allowedEmails.filter((a) => a.id !== id);
     setAllowedEmails(updated);
     if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEYS.ALLOWED_EMAILS, JSON.stringify(updated));
+    }
+
+    if (isSupabaseConnected && target) {
+      try {
+        const supabase = createClient();
+        await supabase.from("allowed_emails").delete().eq("email", target.email);
+      } catch (e) {
+        console.error("Supabase delete allowed_email error", e);
+      }
     }
   };
 
